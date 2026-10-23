@@ -1,0 +1,15 @@
+umask = 0o022
+{{- $platform := .chezmoi.os -}}
+{{- if and (eq .chezmoi.os "linux") (contains "microsoft" (lower .chezmoi.kernel.osrelease)) -}}
+{{-   $platform = "wsl" -}}
+{{- end -}}
+{{- $machine := promptStringOnce . "machine" "Short name for this machine (used in .chezmoiignore and templates)" $platform -}}
+{{- $modes := list "default" "acceptEdits" "auto" "bypassPermissions" -}}
+{{- $mode := promptChoiceOnce . "defaultMode" "Claude Code permission mode on this machine" $modes "default" }}
+
+[data]
+    machine = {{ $machine | quote }}
+    platform = {{ $platform | quote }}
+    defaultMode = {{ $mode | quote }}
+    # Directory of the node binary seen at init time (nvm node is not on PATH for services)
+    nodeDir = {{ with lookPath "node" }}{{ dir . | quote }}{{ else }}""{{ end }}

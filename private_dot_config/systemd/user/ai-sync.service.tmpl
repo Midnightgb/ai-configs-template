@@ -1,0 +1,8 @@
+[Unit]
+Description=Pull and apply AI agent config (chezmoi)
+After=network-online.target
+
+[Service]
+Type=oneshot
+Environment=PATH={{ with .nodeDir }}{{ . }}:{{ end }}%h/.local/bin:%h/.cargo/bin:/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.local/bin/ai-sync pull

@@ -1,0 +1,21 @@
+# Tool dependencies, installed by run_onchange_after_10-deps.sh.tmpl on every machine.
+# The installer re-runs whenever this file changes. Every section is optional.
+[deps]
+
+# Homebrew formulae. version is a minimum: older => upgrade, newer => ok.
+# [[deps.brew]]
+# formula = "jq"
+# version = "1.7"
+
+# Cargo crates, exact version.
+# [deps.cargo]
+# ripgrep = "14.1.1"
+
+# Global npm packages, exact version.
+# [deps.npm]
+# "@anthropic-ai/claude-code" = "2.1.0"
+
+# herdr plugins from GitHub, pinned by tag or commit.
+# [[deps.herdr_plugins]]
+# source = "owner/repo/subdir"
+# ref = "v1.0.0"

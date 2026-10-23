@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# Installs the tools pinned in .chezmoidata/deps.toml. Non-fatal: always exits 0.
+export PATH="{{ with .nodeDir }}{{ . }}:{{ end }}$HOME/.local/bin:$HOME/.cargo/bin:/home/linuxbrew/.linuxbrew/bin:/opt/homebrew/bin:$PATH"
+WARNS=()
+log() { echo "deps: $*"; }
+warn() { log "WARN $*"; WARNS+=("$*"); }
+have() { command -v "$1" >/dev/null 2>&1; }
+# true if $1 >= $2 (version sort)
+ver_ge() { [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n1)" = "$2" ]; }
+
+{{ with get .deps "brew" -}}
+# --- brew formulae ---
+if have brew; then
+{{- range . }}
+  f='{{ .formula }}'; want='{{ .version }}'
+  cur=$(brew list --versions "$f" 2>/dev/null | awk '{print $2}' | head -n1)
+  if [ -z "$cur" ]; then
+    log "installing $f"
+    brew install "$f" || warn "brew install $f failed"
+  elif ver_ge "$cur" "$want"; then
+    log "ok $f $cur (>= $want)"
+  else
+    log "upgrading $f $cur -> $want"
+    brew upgrade "$f" || warn "brew upgrade $f failed"
+  fi
+{{- end }}
+else
+  warn "brew not found; skipping formulae"
+fi
+{{- end }}
+
+{{ with get .deps "cargo" -}}
+# --- cargo crates ---
+if have cargo; then
+{{- range $crate, $want := . }}
+  cur=$(cargo install --list 2>/dev/null | grep -E '^{{ $crate }} v' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1)
+  if [ "$cur" = '{{ $want }}' ]; then
+    log "ok {{ $crate }} $cur"
+  else
+    log "installing {{ $crate }} {{ $want }}"
+    cargo install '{{ $crate }}' --version '{{ $want }}' --locked || warn "cargo install {{ $crate }} failed"
+  fi
+{{- end }}
+else
+  warn "cargo not found; skipping crates"
+fi
+{{- end }}
+
+{{ with get .deps "npm" -}}
+# --- global npm packages ---
+if have npm; then
+{{- range $pkg, $want := . }}
+  cur=$(npm ls -g --depth=0 '{{ $pkg }}' 2>/dev/null | grep -oE '{{ $pkg }}@[^ ]+' | sed 's/.*@//' | head -n1)
+  if [ "$cur" = '{{ $want }}' ]; then
+    log "ok {{ $pkg }} $cur"
+  else
+    log "installing {{ $pkg }}@{{ $want }}"
+    npm install -g '{{ $pkg }}@{{ $want }}' || warn "npm install {{ $pkg }} failed"
+  fi
+{{- end }}
+else
+  warn "npm not found; skipping npm packages"
+fi
+{{- end }}
+
+{{ with get .deps "herdr_plugins" -}}
+# --- herdr plugins ---
+if have herdr; then
+  changed=0
+  plist=$(herdr plugin list 2>/dev/null)
+{{- range . }}
+  src='{{ .source }}'; ref='{{ .ref }}'
+  if printf '%s\n' "$plist" | grep -qF "[github:$src@$ref]"; then
+    log "ok plugin $src@$ref"
+  else
+    old=$(printf '%s\n' "$plist" | grep -F "[github:$src@" | grep '^- ' | head -n1 | sed 's/ (.*//; s/^- //')
+    if [ -n "$old" ]; then
+      log "replacing plugin $old"
+      herdr plugin uninstall "$old" || warn "herdr plugin uninstall $old failed"
+    fi
+    log "installing plugin $src@$ref"
+    if herdr plugin install -y "$src" --ref "$ref"; then changed=1; else warn "herdr plugin install $src failed"; fi
+  fi
+{{- end }}
+  [ "$changed" = 1 ] && { herdr server reload-config >/dev/null 2>&1 || true; }
+else
+  warn "herdr not found; skipping plugins"
+fi
+{{- end }}
+
+# --- summary ---
+if [ "${#WARNS[@]}" -gt 0 ]; then
+  log "summary: ${#WARNS[@]} warning(s)"
+  for w in "${WARNS[@]}"; do echo "deps: WARN $w"; done
+else
+  log "summary: all ok"
+fi
+exit 0

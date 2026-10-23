@@ -1,0 +1,29 @@
+README.md
+LICENSE
+docs
+docs/**
+
+# Junk that never belongs in the repo
+.claude/skills/**/node_modules
+.claude/skills/**/__pycache__
+.claude/skills/**/.git
+.claude/skills/**/*.pyc
+.claude/skills/**/*Zone.Identifier
+
+# Never sync credentials or per-machine state
+.claude/.credentials.json
+.claude.json
+.claude/projects
+.claude/todos
+.claude/shell-snapshots
+.claude/statsig
+.claude/history.jsonl
+
+{{- if ne .platform "wsl" }}
+.local/share/ai-sync/toast.ps1
+{{- end }}
+
+# Per-machine exclusions go below, keyed by .machine (see README, "Per-machine differences").
+{{- if eq .platform "darwin" }}
+.config/systemd
+{{- end }}
